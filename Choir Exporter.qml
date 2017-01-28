@@ -11,7 +11,7 @@ MuseScore {
     menuPath: "Plugins.Choir Rehearsal Export"
 
     property var mainVolume: 90
-    property var backgroundVolume: 30
+    property var backgroundVolume: 40
 
     ListModel {
         id: partModel
@@ -87,7 +87,7 @@ MuseScore {
         {
             part = curScore.parts[partIdx];
             partModel.append({"shortName": part.shortName, "longName": part.longName,
-            "id": partIdx, "selected": true});
+            "id": partIdx, "selected": true, "volume": part.volume});
         }
     }
 
@@ -96,9 +96,7 @@ MuseScore {
     function mixerVolAll(vol) {
         var part;
         for (var partIdx = 0; partIdx < curScore.parts.length; partIdx++) {
-            part = curScore.parts[partIdx];
-            part.volume = vol;
-            part.mute = false ; 
+            mixerVolPart(vol, partIdx);
         }
     }
 
@@ -110,54 +108,41 @@ MuseScore {
         part.mute = false; 
     }
 
-    // Get a Name/Volume pattern to be used in the export filename
-    // e.g. S.50_A.100_T.50_B.50
-    function namesVol(maxPart) {
-        var part;
-        var retName;
-        retName = "";
-        for (var partIdx = 0; partIdx < maxPart ; partIdx++)
-        {
-            part = curScore.parts[partIdx];
-            retName += "_" + part.shortName + part.volume;
-        }
-
-        return retName;
+    function generateMp3File(baseName, partName) {
+        var fileName = baseName + "-" + partName + ".mp3";
+        console.log ( "Generating track: " + fileName);
+        writeScore(curScore , fileName, "mp3" )
     }
 
     // Generates learning tracks to the destination folder.
     function generateLearningTracks(destination) {
+        var baseName =  destination + '/' + curScore.name
+
         // set Volume of all parts to 100
         mixerVolAll(mainVolume)
 
-        for(var i = 0; i < partModel.count; ++i) {
-            console.log(partModel.get(i).longName + " - " + partModel.get(i).selected);
-        }
-
         // export score as mp3 with all voices at normal
-        var expName =  destination + '/' + curScore.name 
-        expName += ".mp3"
-        console.log ( "createfile: " + expName);
-        writeScore(curScore , expName, "mp3" )
-
+        generateMp3File(baseName, "All");
 
         // get number of all parts without piano
         // for every choir voice (eq. part) set all others to volume 50
-        for (var partIdx = 0; partIdx < 0; partIdx++)
+        for (var i = 0; i < partModel.count; ++i)
         {
-            // all others to 50
-            mixerVolAll(50)
+            if (!partModel.get(i).selected) continue;
+            
+            // all others to background volume
+            mixerVolAll(backgroundVolume);
             // single choir voice to 100
-            mixerVolPart(100,partIdx)		
+            mixerVolPart(mainVolume, partModel.get(i).id)		
 
-            expName =  destination + curScore.name 
-            expName += namesVol(maxPart) + ".mp3"
-            console.log ( "createfile: " + expName);
-            writeScore(curScore , expName, "mp3" )
+            generateMp3File(baseName, partModel.get(i).longName);
         }
 
         // when finished set all back to normal
-        mixerVolAll(100)
+        var part;
+        for (var i = 0; i < partModel.count; ++i) {
+            mixerVolPart(partModel.get(i).volume, partModel.get(i).id);
+        }
     }
 
     onRun:
