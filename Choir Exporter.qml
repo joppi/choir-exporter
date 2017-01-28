@@ -10,6 +10,9 @@ MuseScore {
     description: "Exports score as mp3 learning track for individual parts."
     menuPath: "Plugins.Choir Rehearsal Export"
 
+    property var mainVolume: 90
+    property var backgroundVolume: 30
+
     ListModel {
         id: partModel
     }
@@ -35,8 +38,12 @@ MuseScore {
                     delegate: RowLayout {
                         CheckBox {
                             id: part
+                            property var partId: id
                             text: longName
-                            checked: true
+                            checked: selected
+                            onClicked: {
+                                partModel.setProperty(id, "selected", checked)
+                            }
                         }
                     }
                 }
@@ -53,7 +60,18 @@ MuseScore {
         title: qsTr("Please choose a folder")
         selectFolder: true
         onAccepted: {
-            console.log("You chose: " + fileDialog.fileUrls)
+            String.prototype.startsWith = function(str) 
+            {return (this.match("^"+str)==str)}
+
+            var fileUrl = fileDialog.fileUrl.toString();
+            if (fileUrl.startsWith("file://"))
+            {
+                generateLearningTracks(fileUrl.substring(7))
+            }
+            else
+            {
+                console.log("Selected non-local file, aborting.")
+            }
             Qt.quit()
         }
         onRejected: {
@@ -69,17 +87,15 @@ MuseScore {
         {
             part = curScore.parts[partIdx];
             partModel.append({"shortName": part.shortName, "longName": part.longName,
-            "id": partIdx});
+            "id": partIdx, "selected": true});
         }
     }
 
     // Set all parts to volume specified by vol
     // disable mute if enabled.
-    function mixerVolAll(vol)
-    {
+    function mixerVolAll(vol) {
         var part;
-        for (var partIdx = 0; partIdx < curScore.parts.length; partIdx++)
-        {
+        for (var partIdx = 0; partIdx < curScore.parts.length; partIdx++) {
             part = curScore.parts[partIdx];
             part.volume = vol;
             part.mute = false ; 
@@ -87,8 +103,7 @@ MuseScore {
     }
 
     // set the volume of a certain part to "vol"
-    function mixerVolPart(vol, partIdx)
-    {
+    function mixerVolPart(vol, partIdx) {
         var part
         part = curScore.parts[partIdx];
         part.volume = vol;
@@ -97,8 +112,7 @@ MuseScore {
 
     // Get a Name/Volume pattern to be used in the export filename
     // e.g. S.50_A.100_T.50_B.50
-    function namesVol( maxPart )
-    {
+    function namesVol(maxPart) {
         var part;
         var retName;
         retName = "";
@@ -111,24 +125,20 @@ MuseScore {
         return retName;
     }
 
-    onRun:
-    {
-        var expName;  // filename for export
-
-        if (typeof curScore == 'undefined') { Qt.quit()}
-        populatePartsModel();
-        appDialog.open();		
-
-        console.log("parts: " + curScore.parts.length);
-
+    // Generates learning tracks to the destination folder.
+    function generateLearningTracks(destination) {
         // set Volume of all parts to 100
-        mixerVolAll(100)
+        mixerVolAll(mainVolume)
+
+        for(var i = 0; i < partModel.count; ++i) {
+            console.log(partModel.get(i).longName + " - " + partModel.get(i).selected);
+        }
 
         // export score as mp3 with all voices at normal
-        //expName =  "D:/" + curScore.name 
-        //expName += ".mp3"
-        //console.log ( "createfile: " + expName);
-        //writeScore(curScore , expName, "mp3" )
+        var expName =  destination + '/' + curScore.name 
+        expName += ".mp3"
+        console.log ( "createfile: " + expName);
+        writeScore(curScore , expName, "mp3" )
 
 
         // get number of all parts without piano
@@ -140,7 +150,7 @@ MuseScore {
             // single choir voice to 100
             mixerVolPart(100,partIdx)		
 
-            expName =  "D:/" + curScore.name 
+            expName =  destination + curScore.name 
             expName += namesVol(maxPart) + ".mp3"
             console.log ( "createfile: " + expName);
             writeScore(curScore , expName, "mp3" )
@@ -148,7 +158,15 @@ MuseScore {
 
         // when finished set all back to normal
         mixerVolAll(100)
-        Qt.quit()
+    }
+
+    onRun:
+    {
+        var expName;  // filename for export
+
+        if (typeof curScore == 'undefined') { Qt.quit()}
+        populatePartsModel();
+        appDialog.open();		
     } // on run
 
 }
