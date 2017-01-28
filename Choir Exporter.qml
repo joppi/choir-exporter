@@ -17,22 +17,28 @@ MuseScore {
     Dialog {
         id : appDialog
         title : qsTr("Export learning tracks")
-        width : 470
-        height: mainLayout.height
+        width: 400
 
-        GridLayout {
+        ColumnLayout {
             id: mainLayout
-            anchors.fill: parent
-            columns: 1
+            width: appDialog.width - 20
+            Label {
+                text: qsTr("Select which parts should be exported:")
+            }
 
-            ListView {
-                id: listView
-                model: partModel
-                Layout.minimumHeight: 100
+            ScrollView {
                 Layout.bottomMargin: 20
-                delegate: CheckBox {
-                    id: part
-                    text: longName
+                Layout.fillWidth: true
+                ListView {
+                    id: listView
+                    model: partModel
+                    delegate: RowLayout {
+                        CheckBox {
+                            id: part
+                            text: longName
+                            checked: true
+                        }
+                    }
                 }
             }
         }
@@ -41,10 +47,10 @@ MuseScore {
         onRejected : Qt.quit();
     }
 
-    // Select folder to save the learning tracks.
+    // Selects folder to save the learning tracks to.
     FileDialog {
         id: fileDialog
-        title: "Please choose a folder"
+        title: qsTr("Please choose a folder")
         selectFolder: true
         onAccepted: {
             console.log("You chose: " + fileDialog.fileUrls)
@@ -55,6 +61,7 @@ MuseScore {
         }
     }
 
+    // Populates the parts model from the current score.
     function populatePartsModel() {
         partModel.clear(); 
         var part;
