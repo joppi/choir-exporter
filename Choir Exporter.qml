@@ -60,18 +60,13 @@ MuseScore {
         title: qsTr("Please choose a folder")
         selectFolder: true
         onAccepted: {
-            String.prototype.startsWith = function(str) 
-            {return (this.match("^"+str)==str)}
+            var path = fileDialog.fileUrl.toString();
+            // remove prefixed "file:///"
+            path = path.replace(/^(file:\/{2})/,"");
+            // unescape html codes like '%23' for '#'
+            var cleanPath = decodeURIComponent(path);
 
-            var fileUrl = fileDialog.fileUrl.toString();
-            if (fileUrl.startsWith("file://"))
-            {
-                generateLearningTracks(fileUrl.substring(7))
-            }
-            else
-            {
-                console.log("Selected non-local file, aborting.")
-            }
+            generateLearningTracks(cleanPath);
             Qt.quit()
         }
         onRejected: {
@@ -109,6 +104,7 @@ MuseScore {
     }
 
     function generateMp3File(baseName, partName) {
+        partName = partName.replace(/<(?:.|\n)*?>/gm, '');
         var fileName = baseName + "-" + partName + ".mp3";
         console.log ( "Generating track: " + fileName);
         writeScore(curScore , fileName, "mp3" )
