@@ -11,7 +11,7 @@ MuseScore {
     menuPath: "Plugins.Choir Rehearsal Export"
 
     property var mainVolume: 90
-    property var backgroundVolume: 40
+    property var backgroundVolume: 30
 
     ListModel {
         id: partModel
