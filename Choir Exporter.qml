@@ -10,8 +10,7 @@ MuseScore {
     description: "Exports score as mp3 learning track for individual parts."
     menuPath: "Plugins.Choir Rehearsal Export"
 
-    property var mainVolume: 90
-    property var backgroundVolume: 40
+    property var volumeRatio: 0.35
 
     ListModel {
         id: partModel
@@ -86,21 +85,18 @@ MuseScore {
         }
     }
 
-    // Set all parts to volume specified by vol
-    // disable mute if enabled.
-    function mixerVolAll(vol) {
-        var part;
-        for (var partIdx = 0; partIdx < curScore.parts.length; partIdx++) {
-            mixerVolPart(vol, partIdx);
+    // Set all parts to specified ratio of original volume.
+    function mixerVolAll(ratio) {
+        for (var i = 0; i < partModel.count; ++i) {
+            mixerVolPart(ratio, i);
         }
     }
 
-    // set the volume of a certain part to "vol"
-    function mixerVolPart(vol, partIdx) {
+    // Set the volume of a certain part to the specified ratio.
+    function mixerVolPart(ratio, partId) {
         var part
-        part = curScore.parts[partIdx];
-        part.volume = vol;
-        part.mute = false; 
+        part = curScore.parts[partModel.get(partId).id];
+        part.volume = partModel.get(partId).volume * ratio;
     }
 
     function generateMp3File(baseName, partName) {
@@ -114,9 +110,6 @@ MuseScore {
     function generateLearningTracks(destination) {
         var baseName =  destination + '/' + curScore.name
 
-        // set Volume of all parts to 100
-        mixerVolAll(mainVolume)
-
         // export score as mp3 with all voices at normal
         generateMp3File(baseName, "All");
 
@@ -127,18 +120,16 @@ MuseScore {
             if (!partModel.get(i).selected) continue;
             
             // all others to background volume
-            mixerVolAll(backgroundVolume);
-            // single choir voice to 100
-            mixerVolPart(mainVolume, partModel.get(i).id)		
+            mixerVolAll(volumeRatio);
+
+            // single choir voice to original volume
+            mixerVolPart(1.0, i);
 
             generateMp3File(baseName, partModel.get(i).longName);
         }
 
         // when finished set all back to normal
-        var part;
-        for (var i = 0; i < partModel.count; ++i) {
-            mixerVolPart(partModel.get(i).volume, partModel.get(i).id);
-        }
+        mixerVolAll(1.0);
     }
 
     onRun:
